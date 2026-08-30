@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Island Trade Architect: Sustainable Paths</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 10px;
+    background-color: #12100e;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+  h1 { margin: 0 0 4px 0; color: #e6c875; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-size: 24px; }
+  #subtitle { font-size: 12px; color: #b7b0a8; max-width: 780px; text-align: center; margin-bottom: 8px; line-height: 1.4; }
+
+  #a11y-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  #a11y-bar button {
+    font-size: 11px;
+    padding: 5px 10px;
+    background: #362f2d;
+    color: #ffd983;
+    border: 1px solid #4a3b32;
+  }
+  #a11y-bar button[aria-pressed="true"] {
+    background: #e6c875;
+    color: #1a1a1a;
+  }
+
+  #game-layout {
+    display: flex;
+    gap: 15px;
+    max-width: 1200px;
+  }
+
+  canvas {
+    border: 3px solid #4a3b32;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+    background-color: #1d4361;
+    cursor: default;
+  }
+
+  #ui-panel {
+    width: 330px;
+    background: #2a2421;
+    border: 2px solid #4a3b32;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 640px;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .stat-card {
+    background: #362f2d;
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    border: 1px solid #4a3b32;
+  }
+  .stat-card h3 { margin: 0 0 5px 0; color: #e6c875; font-size: 14px; }
+
+  .game-param { display: flex; justify-content: space-between; margin-bottom: 2px;}
+  .param-val { font-weight: bold; color: #ffd983;}
+  .param-val.warn { color: #ff8080; }
+  .param-val.good { color: #8ef29a; }
+
+  .bar-track { background: #151211; border-radius: 3px; height: 8px; overflow: hidden; margin-top: 2px; border: 1px solid #4a3b32; }
+  .bar-fill { height: 100%; transition: width 0.4s ease; }
+
+  button {
+    background: #e6c875;
+    color: #1a1a1a;
+    border: none;
+    padding: 6px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 12px;
+  }
+  button:hover { background: #ffd983; }
+  button:disabled { background: #555; color: #ccc; cursor: not-allowed; }
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 3px solid #75c8ff;
+    outline-offset: 2px;
+  }
+
+  .role-btn { flex: 1 1 45%; font-size: 11px; padding: 6px 4px; background: #4a3b32; color: #fff; border: 1px solid #6b5644; }
+  .role-btn[aria-pressed="true"] { background: #75c8ff; color: #12100e; }
+
+  #log {
+    flex-grow: 1;
+    background: #151211;
+    border: 1px solid #4a3b32;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 11px;
+    overflow-y: auto;
+    color: #ccc;
+    line-height: 1.3;
+    min-height: 80px;
+  }
+
+  .log-event { color: #e6c875; }
+  .log-attack { color: #ff5555; font-weight: bold;}
+  .log-trade { color: #75c8ff; }
+  .log-eco { color: #8ef29a; }
+
+  select, input {
+    width: 100%;
+    padding: 3px;
+    margin-top: 2px;
+    background: #151211;
+    color: #fff;
+    border: 1px solid #4a3b32;
+    box-sizing: border-box;
+    font-size: 11px;
+  }
+
+  .instructions {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+  }
+
+  /* Visually hidden but available to screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* High contrast mode */
+  body.high-contrast { background: #000; }
+  body.high-contrast #ui-panel { background: #000; border-color: #fff; }
+  body.high-contrast .stat-card { background: #000; border: 2px solid #fff; }
+  body.high-contrast .stat-card h3 { color: #ffff00; }
+  body.high-contrast .param-val { color: #00ffff; }
+  body.high-contrast canvas { border-color: #fff; }
+  body.high-contrast button { background: #ffff00; color: #000; border: 2px solid #fff; }
+  body.high-contrast .role-btn[aria-pressed="true"] { background: #00ffff; }
+  body.high-contrast #log { border-color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>Island Trade Architect: Sustainable Paths</h1>
+<p id="subtitle">A simulation tool for exploring how isolated coastal settlements can build fair resource-sharing networks, hold off environmental and physical threats, and stay resilient without stripping the land bare. Draw trade routes, defend your settlements from raiders, wildlife, and invasive species, and pick a role that shapes how you play.</p>
+
+<div id="a11y-bar" role="group" aria-label="Accessibility settings">
+  <button id="contrast-toggle" aria-pressed="false">🌓 High Contrast</button>
+  <button id="motion-toggle" aria-pressed="false">🐢 Reduce Motion</button>
+  <button id="about-toggle" aria-expanded="false" aria-controls="about-panel">ℹ️ About This Project</button>
+</div>
+<div id="about-panel" class="stat-card" style="display:none; max-width:780px; margin-bottom:8px;">
+  <h3>Problem &amp; Purpose</h3>
+  <p style="font-size:12px; line-height:1.5; margin:0;">
+    Small, isolated coastal communities often each hold only one resource in abundance (wood, food, fresh water, or minerals) and can collapse quickly from starvation, overharvesting, raids, or unchecked invasive species if they can't cooperate. This tool models that tension: players design custom trade paths to move surplus resources to clans in need, invest in defenses against outside threats, and manage the health of four distinct habitats. A live <strong>Resource Equity Index</strong> and <strong>Environmental Health</strong> meter show the real cost of over-relying on any single settlement's land, while optional player roles change how you're best able to help.
+  </p>
+</div>
+
+<div id="game-layout">
+  <canvas id="gameCanvas" width="800" height="600" role="img" aria-label="Island map showing four distinct habitats. Use the accessible status list below for full details on each settlement."></canvas>
+
+  <div id="ui-panel">
+    <div class="stat-card" id="role-card">
+      <h3>Your Role</h3>
+      <div class="instructions" id="role-desc">Choose a role for passive bonuses and a unique ability.</div>
+      <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;" role="group" aria-label="Choose your role">
+        <button type="button" class="role-btn" data-role="diplomat" aria-pressed="false">🕊️ Diplomat</button>
+        <button type="button" class="role-btn" data-role="ranger" aria-pressed="false">🌿 Ranger</button>
+        <button type="button" class="role-btn" data-role="guardian" aria-pressed="false">🛡️ Guardian</button>
+        <button type="button" class="role-btn" data-role="merchant" aria-pressed="false">📦 Merchant</button>
+      </div>
+      <button id="ability-btn" style="width:100%; margin-top:8px; background:#75c8ff;" disabled>Select a role first</button>
+    </div>
+
+    <div class="stat-card">
+      <h3>Island Status</h3>
+      <div class="game-param"><span>Day:</span> <span class="param-val" id="day-display">1</span></div>
+      <div class="game-param"><span>Hour:</span> <span class="param-val" id="hour-display">0</span></div>
+      <div class="game-param"><span>Clans:</span> <span class="param-val" id="clan-count">4</span></div>
+      <div class="game-param"><span>Fauna:</span> <span class="param-val" id="wildlife-count">0</span></div>
+    </div>
+
+    <div class="stat-card">
+      <h3>Sustainability &amp; Equity</h3>
+      <div class="game-param"><span title="Average land/water health across all settlements.">Environmental Health:</span> <span class="param-val" id="eco-health-display">100%</span></div>
+      <div class="bar-track"><div class="bar-fill" id="eco-health-bar" style="width:100%; background:#8ef29a;"></div></div>
+
+      <div class="game-param" style="margin-top:6px;"><span title="How evenly resources are distributed across active clans.">Resource Equity:</span> <span class="param-val" id="equity-display">100%</span></div>
+      <div class="bar-track"><div class="bar-fill" id="equity-bar" style="width:100%; background:#75c8ff;"></div></div>
+
+      <div class="game-param" style="margin-top:6px;"><span>Total Aid Delivered:</span> <span class="param-val" id="aid-display">0</span></div>
+      <div class="game-param"><span>Clans in Shortage:</span> <span class="param-val" id="shortage-display">0</span></div>
+      <div class="game-param"><span>Invasive Outbreaks:</span> <span class="param-val" id="invasive-display">0</span></div>
+    </div>
+
+    <div class="stat-card">
+      <h3>Actions</h3>
+      <button id="add-clan-btn" style="width: 100%;">Establish New Settlement</button>
+      <div style="display: flex; gap: 5px; margin-top: 5px;">
+        <button id="pause-btn" style="flex: 1; background: #a85c5c; color: white;" aria-pressed="false">Pause</button>
+        <button id="resume-btn" style="flex: 1; background: #5ca86c; color: white; display: none;" aria-pressed="true">Resume</button>
+      </div>
+      <div class="instructions">Keyboard shortcut: press Space to pause/resume.</div>
+    </div>
+
+    <div class="stat-card" id="defense-builder">
+      <h3>Clan Defenses</h3>
+      <label for="defense-clan-select">Settlement:
+        <select id="defense-clan-select"></select>
+      </label>
+      <div class="game-param" style="margin-top:4px;"><span>Defense Level:</span> <span class="param-val" id="defense-level-display">0/100</span></div>
+      <div class="bar-track"><div class="bar-fill" id="defense-bar" style="width:0%; background:#e67e22;"></div></div>
+      <button id="reinforce-btn" style="margin-top: 8px; width: 100%;">🛡️ Reinforce Defenses</button>
+      <button id="clear-invasive-btn" style="margin-top: 5px; width: 100%; background:#a855c7; color:white;">🧹 Clear Nearby Invasives</button>
+      <div class="instructions">Defense reduces raid and wildlife losses, and helps clear invasive outbreaks near this settlement.</div>
+    </div>
+
+    <div class="stat-card" id="trade-builder">
+      <h3>Custom Trade Route</h3>
+      <label for="trade-from">From:
+        <select id="trade-from"></select>
+      </label>
+      <label for="trade-to">To:
+        <select id="trade-to"></select>
+      </label>
+      <div style="display: flex; gap: 3px;">
+        <div style="flex: 2;">
+          <label for="trade-give-res">Supply:
+            <select id="trade-give-res">
+              <option value="wood">Wood 🪵</option>
+              <option value="food">Food 🌾</option>
+              <option value="water">Water 💧</option>
+              <option value="minerals">Minerals 🪨</option>
+            </select>
+          </label>
+        </div>
+        <div style="flex: 1;">
+          <label for="trade-give-qty">Qty: <input type="number" id="trade-give-qty" value="10" min="1" max="30"></label>
+        </div>
+      </div>
+      <button id="suggest-aid-btn" style="margin-top: 8px; width: 100%; background:#75c8ff;">🤝 Auto-Suggest Aid Route</button>
+      <button id="draw-route-btn" style="margin-top: 5px; width: 100%;">Draw Route Path</button>
+      <div class="instructions" id="path-instruction">Click "Draw Route Path", then click on map to add waypoints between clans. Right-click or press "Finish Path" to finalize.</div>
+      <button id="finish-path-btn" style="margin-top: 5px; width: 100%; display: none; background: #5ca86c; color: white;">Finish Path &amp; Start Route</button>
+    </div>
+
+    <div id="log" role="log" aria-live="polite" aria-label="Event log">
+        <div class="log-event">Game Started. Pick a role, draw trade paths, and reinforce settlements against raiders, wildlife, and invasive species!</div>
+    </div>
+  </div>
+</div>
+
+<!-- Accessible, screen-reader-only mirror of the canvas game state -->
+<div id="sr-status" class="sr-only" aria-live="polite">
+  <h2>Settlement Status (accessible summary)</h2>
+  <table id="sr-clan-table">
+    <caption>Live population, resource levels, and defense per settlement</caption>
+    <thead>
+      <tr><th>Settlement</th><th>Biome</th><th>Population</th><th>Wood</th><th>Food</th><th>Water</th><th>Minerals</th><th>Defense</th><th>Status</th></tr>
+    </thead>
+    <tbody id="sr-clan-tbody"></tbody>
+  </table>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const TICK_RATE = 1000;
+const BASE_CARAVAN_SPEED = 1.0;
+const BASE_WILDLIFE_SPEED = 0.3;
+const BASE_RAIDER_SPEED = 0.5;
+let TRADE_CARAVAN_SPEED = BASE_CARAVAN_SPEED;
+let WILDLIFE_SPEED = BASE_WILDLIFE_SPEED;
+let RAIDER_SPEED = BASE_RAIDER_SPEED;
+const COLLISION_RADIUS = 15;
+
+const NAME_PREFIXES = ["Verdan", "Stonepeak", "River", "Plains", "Iron", "Sunken", "Whispering", "Shadow", "Amber", "Storm", "Frost", "Gale"];
+const NAME_SUFFIXES = ["Vipers", "Sentinels", "Runners", "Walkers", "Guards", "Keepers", "Stalkers", "Hunters", "Bears", "Wolves", "Claws"];
+
+// Distinct color palette for unique clans
+const CLAN_COLORS = [
+  '#e74c3c', '#3498db', '#2ecc71', '#f1c40f',
+  '#9b59b6', '#e67e22', '#1abc9c', '#fd79a8',
+  '#6c5ce7', '#00cec9'
+];
+
+const BIOMES = {
+  WOODS: { name: 'Forest', mainSupply: 'wood', needs: { water: 0.15, food: 0.05, minerals: 0.02, wood: 0.01 } },
+  PLAINS: { name: 'Plains', mainSupply: 'food', needs: { wood: 0.20, water: 0.10, minerals: 0.02, food: 0.01 } },
+  RIVER: { name: 'River Basin', mainSupply: 'water', needs: { food: 0.15, wood: 0.08, minerals: 0.02, water: 0.01 } },
+  MOUNTAINS: { name: 'Crags', mainSupply: 'minerals', needs: { food: 0.15, water: 0.15, wood: 0.10, minerals: 0.01 } }
+};
+
+// Distinct visual habitat zones matching each biome, used to tint the island and place terrain/fauna
+const ZONES = [
+  { name: 'forest',    cx: 210, cy: 160, r: 260, color: 'rgba(30,90,35,0.30)' },
+  { name: 'plains',    cx: 490, cy: 190, r: 260, color: 'rgba(190,175,80,0.24)' },
+  { name: 'river',     cx: 280, cy: 420, r: 260, color: 'rgba(50,140,155,0.26)' },
+  { name: 'mountains', cx: 520, cy: 410, r: 260, color: 'rgba(120,108,100,0.26)' }
+];
+
+// Fauna native to each terrain feature type: one passive species, one rarer aggressive species
+const FAUNA = {
+  tree:     { passive: 'deer',  aggressive: 'wolf' },
+  mountain: { passive: 'goat',  aggressive: 'bear' },
+  grass:    { passive: 'sheep', aggressive: 'boar' },
+  reed:     { passive: 'otter', aggressive: 'croc' }
+};
+const FAUNA_STYLE = {
+  wolf:  { color: '#9a9a9a' }, bear:  { color: '#63412c' },
+  boar:  { color: '#8a5a35' }, croc:  { color: '#4d6b3a' },
+  deer:  { color: '#c9a066' }, goat:  { color: '#eaeaea' },
+  sheep: { color: '#f5f0e6' }, otter: { color: '#6b4a33' }
+};
+
+// Player roles: each gives a passive bonus and one active ability on a cooldown
+const ROLES = {
+  diplomat: {
+    name: 'Diplomat',
+    desc: 'Trade specialist: caravans move 40% faster. Ability: Broker Peace calms raiders for a while.',
+    ability: { name: 'Broker Peace', cooldown: 48, effect: activateBrokerPeace }
+  },
+  ranger: {
+    name: 'Ranger',
+    desc: 'Land specialist: environment regrows 2x faster and invasive species spread more slowly. Ability: Rapid Regrowth restores land island-wide.',
+    ability: { name: 'Rapid Regrowth', cooldown: 48, effect: activateRapidRegrowth }
+  },
+  guardian: {
+    name: 'Guardian',
+    desc: 'Defense specialist: fortifications cost 40% less and raids are easier to repel. Ability: Rally Defenses reinforces every settlement.',
+    ability: { name: 'Rally Defenses', cooldown: 48, effect: activateRallyDefenses }
+  },
+  merchant: {
+    name: 'Merchant',
+    desc: 'Logistics specialist: deliveries arrive 50% larger. Ability: Market Rush sends emergency supplies to whoever needs them most.',
+    ability: { name: 'Market Rush', cooldown: 48, effect: activateMarketRush }
+  }
+};
+
+const SHORTAGE_THRESHOLD = 10; // stock below this counts as "in shortage" for a resource
+const OVERHARVEST_WARN = 30;   // localEnvironment below this triggers reduced yield + warning
+
+let isPaused = false;
+let gameTimeH = 0;
+let placingClan = false;
+let drawingRoute = false;
+let currentPathWaypoints = [];
+let activeRouteSetup = null;
+let reducedMotion = false;
+let currentRole = null;
+let abilityCooldown = 0;
+let raidSuppressionTimer = 0;
+
+let terrainFeatures = [];
+let islandPath = [];
+
+let clans = [];
+let tradeRoutes = [];
+let caravans = [];
+let wildlife = [];
+let raiders = [];
+let invasives = [];
+
+let totalAidDelivered = 0;
+
+function init() {
+  generateOrganicIslandShape();
+  generateTerrain();
+
+  clans = [
+    createClan(generateRandomName(), 210, 160, BIOMES.WOODS, CLAN_COLORS[0]),
+    createClan(generateRandomName(), 490, 190, BIOMES.PLAINS, CLAN_COLORS[1]),
+    createClan(generateRandomName(), 280, 420, BIOMES.RIVER, CLAN_COLORS[2]),
+    createClan(generateRandomName(), 520, 410, BIOMES.MOUNTAINS, CLAN_COLORS[3])
+  ];
+
+  updateUIDropdowns();
+  updateAbilityButton();
+  updateUIStats();
+
+  setInterval(gameTick, TICK_RATE);
+  requestAnimationFrame(animationLoop);
+}
+
+function createClan(name, x, y, biome, color) {
+  return {
+    id: Math.random().toString(36).substr(2, 9),
+    name: name, x: x, y: y, biome: biome, color: color,
+    population: 20,
+    stock: { wood: 40, food: 40, water: 40, minerals: 15 },
+    productionCooldown: 0,
+    localEnvironment: 100, // sustainability of this clan's harvesting land
+    defense: 0,             // fortification level, 0-100
+    aidReceived: 0
+  };
+}
+
+function generateRandomName() {
+  return `${NAME_PREFIXES[Math.floor(Math.random() * NAME_PREFIXES.length)]} ${NAME_SUFFIXES[Math.floor(Math.random() * NAME_SUFFIXES.length)]}`;
+}
+
+// --- Role passive multipliers ---
+function getCaravanRoleMult() { return currentRole === 'diplomat' ? 1.4 : 1; }
+function getEnvRegenMult() { return currentRole === 'ranger' ? 2.0 : 1; }
+function getInvasiveSpreadMult() { return currentRole === 'ranger' ? 0.5 : 1; }
+function getDefenseCostMult() { return currentRole === 'guardian' ? 0.6 : 1; }
+function getRaidResistBonus() { return currentRole === 'guardian' ? 0.15 : 0; }
+function getQtyMult() { return currentRole === 'merchant' ? 1.5 : 1; }
+
+function gameTick() {
+  if (abilityCooldown > 0) abilityCooldown--;
+  if (raidSuppressionTimer > 0) raidSuppressionTimer--;
+  updateAbilityButton();
+
+  if (isPaused || gameTimeH >= 30 * 24) return;
+  gameTimeH++;
+
+  let aClanDied = false;
+
+  clans.forEach(clan => {
+    if (clan.population <= 0) return;
+
+    for (let res in clan.biome.needs) {
+      clan.stock[res] -= clan.biome.needs[res] * (clan.population / 20);
+      if (clan.stock[res] < 0) {
+        clan.stock[res] = 0;
+        if (Math.random() < 0.1) {
+           clan.population--;
+           log(`${clan.name} villager died of starvation (${res}).`, 'attack');
+           if (clan.population <= 0) aClanDied = true;
+        }
+      }
+    }
+
+    // --- Environmental / sustainability system ---
+    clan.localEnvironment = Math.min(100, clan.localEnvironment + 0.08 * getEnvRegenMult());
+
+    clan.productionCooldown--;
+    if (clan.productionCooldown <= 0) {
+        const overharvesting = clan.localEnvironment < OVERHARVEST_WARN;
+        const yieldAmount = overharvesting ? 1 : 2;
+        clan.stock[clan.biome.mainSupply] += yieldAmount;
+        clan.localEnvironment = Math.max(0, clan.localEnvironment - 1.4);
+        if (overharvesting && Math.random() < 0.15) {
+          log(`${clan.name}'s ${clan.biome.mainSupply} supply is being overharvested — yields are dropping.`, 'eco');
+        }
+        clan.productionCooldown = 4;
+    }
+  });
+
+  if (aClanDied) updateUIDropdowns();
+
+  updateInvasives();
+  if (gameTimeH > 5 * 24 && invasives.length < 10 && Math.random() < 0.012) spawnInvasive();
+
+  const envHealth = computeEnvironmentalHealth();
+  const habitatStressBonus = (100 - envHealth) / 1800;
+
+  // Reduced aggressive spawn rate; passive fauna spawns more often and add ambient life
+  const passiveChance = 0.05 + (clans.length * 0.006);
+  const aggressiveChance = 0.014 + habitatStressBonus;
+  if (wildlife.length < 45 && Math.random() < passiveChance) spawnWildlife('passive');
+  if (wildlife.length < 45 && Math.random() < aggressiveChance) spawnWildlife('aggressive');
+
+  if (gameTimeH > 48 && raidSuppressionTimer <= 0 && Math.random() < 0.03) spawnRaiders();
+
+  // Trigger Caravans for Active Routes
+  tradeRoutes.forEach(route => {
+    const origin = route.from;
+    const existingGroup = caravans.filter(c => c.routeId === route.id && c.state === 'delivering');
+
+    if (existingGroup.length === 0 && origin.population > 0 && origin.stock[route.giveRes] >= route.giveQty) {
+        origin.stock[route.giveRes] -= route.giveQty;
+
+        const traderCount = 3;
+        const totalQty = route.giveQty * getQtyMult();
+        const qtyPerTrader = Math.ceil(totalQty / traderCount);
+
+        for (let i = 0; i < traderCount; i++) {
+            caravans.push({
+                id: Math.random().toString(36).substr(2, 5),
+                routeId: route.id,
+                routePath: route.path,
+                from: route.from,
+                to: route.to,
+                res: route.giveRes,
+                qty: qtyPerTrader,
+                pathIndex: 0,
+                x: route.path[0].x,
+                y: route.path[0].y,
+                delay: i * 15,
+                state: 'delivering'
+            });
+        }
+        log(`${origin.name} dispatched a group of traders to ${route.to.name}.`, 'trade');
+    }
+  });
+
+  updateUIStats();
+}
+
+function computeEnvironmentalHealth() {
+  const active = clans.filter(c => c.population > 0);
+  if (active.length === 0) return 100;
+  const sum = active.reduce((acc, c) => acc + c.localEnvironment, 0);
+  return sum / active.length;
+}
+
+function computeEquityIndex() {
+  const active = clans.filter(c => c.population > 0);
+  if (active.length <= 1) return 100;
+  const resources = ['wood', 'food', 'water', 'minerals'];
+  let cvSum = 0;
+  resources.forEach(res => {
+    const values = active.map(c => c.stock[res]);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    if (mean <= 0.0001) return;
+    const variance = values.reduce((a, v) => a + Math.pow(v - mean, 2), 0) / values.length;
+    const cv = Math.sqrt(variance) / mean;
+    cvSum += cv;
+  });
+  const avgCv = cvSum / resources.length;
+  return Math.max(0, Math.min(100, 100 - avgCv * 45));
+}
+
+function countShortages() {
+  const active = clans.filter(c => c.population > 0);
+  return active.filter(c => Object.values(c.stock).some(v => v < SHORTAGE_THRESHOLD)).length;
+}
+
+function spawnWildlife(behavior) {
+    const spawns = terrainFeatures.filter(f => FAUNA[f.type]);
+    if (spawns.length === 0) return;
+    const feature = spawns[Math.floor(Math.random() * spawns.length)];
+    const species = FAUNA[feature.type][behavior];
+
+    wildlife.push({
+        type: species,
+        behavior: behavior,
+        x: feature.x + (Math.random()*40-20),
+        y: feature.y + (Math.random()*40-20),
+        vx: (Math.random() - 0.5) * WILDLIFE_SPEED * 2,
+        vy: (Math.random() - 0.5) * WILDLIFE_SPEED * 2,
+        cooldown: 0
+    });
+}
+
+function spawnRaiders() {
+    const edge = Math.random() < 0.5;
+    const x = edge ? (Math.random() < 0.5 ? 20 : canvas.width - 20) : Math.random() * canvas.width;
+    const y = !edge ? (Math.random() < 0.5 ? 20 : canvas.height - 20) : Math.random() * canvas.height;
+
+    const targets = clans.filter(c => c.population > 0);
+    if (targets.length === 0) return;
+
+    raiders.push({
+        x: x, y: y,
+        target: targets[Math.floor(Math.random() * targets.length)],
+        size: 5 + Math.floor(Math.random()*5)
+    });
+}
+
+// Invasive species spread slowly, degrade nearby land, and harm local fauna
+function spawnInvasive(nearX, nearY) {
+  let x, y, tries = 0;
+  if (nearX !== undefined) {
+    do {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 40 + Math.random() * 45;
+      x = nearX + Math.cos(ang) * dist;
+      y = nearY + Math.sin(ang) * dist;
+      tries++;
+    } while (!isPointInIsland(x, y) && tries < 20);
+  } else {
+    do {
+      x = Math.random() * canvas.width;
+      y = Math.random() * canvas.height;
+      tries++;
+    } while (!isPointInIsland(x, y) && tries < 30);
+  }
+  if (!isPointInIsland(x, y)) return;
+  invasives.push({ id: Math.random().toString(36).substr(2, 6), x, y, radius: 10 });
+  if (nearX === undefined) log('An invasive species has taken root on the island!', 'attack');
+}
+
+function updateInvasives() {
+  for (let i = invasives.length - 1; i >= 0; i--) {
+    const iv = invasives[i];
+    iv.radius = Math.min(55, iv.radius + 0.06);
+
+    clans.forEach(clan => {
+      if (clan.population <= 0) return;
+      const d = Math.hypot(clan.x - iv.x, clan.y - iv.y);
+      if (d < 150) {
+        const mitigation = 1 - Math.min(0.75, clan.defense / 160);
+        clan.localEnvironment = Math.max(0, clan.localEnvironment - 0.25 * mitigation);
+      }
+    });
+
+    if (invasives.length < 14 && Math.random() < 0.006 * getInvasiveSpreadMult()) {
+      spawnInvasive(iv.x, iv.y);
+    }
+  }
+}
+
+function reinforceDefenses() {
+  const clan = clans.find(c => c.id === document.getElementById('defense-clan-select').value);
+  if (!clan || clan.population <= 0) { log('Select an active settlement first.'); return; }
+  const mult = getDefenseCostMult();
+  const cost = { wood: Math.round(15 * mult), minerals: Math.round(10 * mult) };
+  if (clan.stock.wood < cost.wood || clan.stock.minerals < cost.minerals) {
+    log(`${clan.name} lacks resources to reinforce defenses (needs ${cost.wood} wood, ${cost.minerals} minerals).`);
+    return;
+  }
+  clan.stock.wood -= cost.wood;
+  clan.stock.minerals -= cost.minerals;
+  clan.defense = Math.min(100, clan.defense + 15);
+  log(`${clan.name} reinforced its defenses (now ${Math.round(clan.defense)}/100).`, 'trade');
+  updateDefenseUI();
+  updateUIStats();
+}
+
+function clearInvasives() {
+  const clan = clans.find(c => c.id === document.getElementById('defense-clan-select').value);
+  if (!clan || clan.population <= 0) { log('Select an active settlement first.'); return; }
+  const cost = { wood: 10, minerals: 5 };
+  if (clan.stock.wood < cost.wood || clan.stock.minerals < cost.minerals) {
+    log(`${clan.name} lacks resources to send a clearing party.`);
+    return;
+  }
+  const nearby = invasives.filter(iv => Math.hypot(iv.x - clan.x, iv.y - clan.y) < 160);
+  if (nearby.length === 0) {
+    log(`${clan.name} found no invasive growth nearby.`, 'eco');
+    return;
+  }
+  clan.stock.wood -= cost.wood;
+  clan.stock.minerals -= cost.minerals;
+  const successChance = 0.35 + clan.defense * 0.006;
+  if (Math.random() < successChance) {
+    const target = nearby[0];
+    invasives.splice(invasives.indexOf(target), 1);
+    log(`${clan.name}'s clearing party removed an invasive outbreak!`, 'eco');
+  } else {
+    log(`${clan.name}'s clearing party failed to fully clear the invasive growth this time.`, 'attack');
+  }
+  updateUIStats();
+}
+
+// --- Role abilities ---
+function activateBrokerPeace() {
+  raidSuppressionTimer = 30;
+  log('Diplomatic outreach calms nearby raiders for a while.', 'eco');
+}
+function activateRapidRegrowth() {
+  clans.forEach(c => { if (c.population > 0) c.localEnvironment = Math.min(100, c.localEnvironment + 25); });
+  log('A wave of rapid regrowth restores land across the island.', 'eco');
+}
+function activateRallyDefenses() {
+  clans.forEach(c => { if (c.population > 0) c.defense = Math.min(100, c.defense + 10); });
+  log('Every settlement reinforces its defenses.', 'eco');
+  updateDefenseUI();
+}
+function activateMarketRush() {
+  const active = clans.filter(c => c.population > 0);
+  if (active.length === 0) return;
+  let target = active[0], lowest = Infinity;
+  active.forEach(c => {
+    const total = Object.values(c.stock).reduce((a, b) => a + b, 0);
+    if (total < lowest) { lowest = total; target = c; }
+  });
+  ['wood', 'food', 'water', 'minerals'].forEach(r => target.stock[r] += 15);
+  log(`Market Rush delivers emergency supplies to ${target.name}.`, 'trade');
+}
+
+function useAbility() {
+  if (!currentRole || abilityCooldown > 0) return;
+  ROLES[currentRole].ability.effect();
+  abilityCooldown = ROLES[currentRole].ability.cooldown;
+  updateAbilityButton();
+  updateUIStats();
+}
+
+function updateAbilityButton() {
+  const btn = document.getElementById('ability-btn');
+  if (!currentRole) { btn.disabled = true; btn.innerText = 'Select a role first'; return; }
+  const role = ROLES[currentRole];
+  if (abilityCooldown > 0) {
+    btn.disabled = true;
+    btn.innerText = `${role.ability.name} (ready in ${abilityCooldown}h)`;
+  } else {
+    btn.disabled = false;
+    btn.innerText = `Use Ability: ${role.ability.name}`;
+  }
+}
+
+function animationLoop() {
+  if (!isPaused) {
+    moveCaravans();
+    moveWildlife();
+    moveRaiders();
+    handleCollisions();
+  }
+
+  drawGraphics();
+  requestAnimationFrame(animationLoop);
+}
+
+function moveCaravans() {
+    const speed = TRADE_CARAVAN_SPEED * getCaravanRoleMult();
+    caravans.forEach((caravan, index) => {
+        if (caravan.delay > 0) {
+            caravan.delay--;
+            return;
+        }
+
+        const path = caravan.state === 'delivering' ? caravan.routePath : [...caravan.routePath].reverse();
+        const targetPoint = path[caravan.pathIndex];
+
+        if (!targetPoint) return;
+
+        const dx = targetPoint.x - caravan.x;
+        const dy = targetPoint.y - caravan.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > 3) {
+            caravan.x += (dx / dist) * speed;
+            caravan.y += (dy / dist) * speed;
+        } else {
+            if (caravan.pathIndex < path.length - 1) {
+                caravan.pathIndex++;
+            } else {
+                if (caravan.state === 'delivering') {
+                    if (caravan.to.population > 0) {
+                       caravan.to.stock[caravan.res] += caravan.qty;
+                       caravan.to.aidReceived += caravan.qty;
+                       totalAidDelivered += caravan.qty;
+                       log(`Trader arrived at ${caravan.to.name} (+${caravan.qty} ${caravan.res}).`, 'trade');
+                    }
+                    caravan.state = 'returning';
+                    caravan.pathIndex = 0;
+                } else {
+                    caravans.splice(index, 1);
+                }
+            }
+        }
+    });
+}
+
+function moveWildlife() {
+    wildlife.forEach(w => {
+        w.x += w.vx; w.y += w.vy;
+        if (!isPointInIsland(w.x, w.y)) {
+            w.vx *= -1; w.vy *= -1;
+            w.x += w.vx * 2; w.y += w.vy * 2;
+        }
+        if (Math.random() < 0.01) {
+            w.vx = (Math.random() - 0.5) * WILDLIFE_SPEED * 2;
+            w.vy = (Math.random() - 0.5) * WILDLIFE_SPEED * 2;
+        }
+        w.cooldown = Math.max(0, w.cooldown - 1);
+    });
+}
+
+function moveRaiders() {
+    raiders.forEach((r, index) => {
+        const dx = r.target.x - r.x;
+        const dy = r.target.y - r.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > COLLISION_RADIUS) {
+            r.x += (dx / dist) * RAIDER_SPEED;
+            r.y += (dy / dist) * RAIDER_SPEED;
+        } else {
+            resolveSettlementRaid(r.target, r.size);
+            raiders.splice(index, 1);
+        }
+    });
+}
+
+function handleCollisions() {
+    wildlife.forEach(w => {
+        if (w.cooldown > 0) return;
+        if (w.behavior === 'aggressive') {
+            caravans.forEach((c, cIndex) => {
+                if (Math.hypot(w.x - c.x, w.y - c.y) < COLLISION_RADIUS) {
+                    log(`Wildlife (${w.type}) attacked a trader!`, 'attack');
+                    if (Math.random() < 0.45) {
+                        log(`Trader defeated. ${c.qty} ${c.res} dropped.`);
+                        caravans.splice(cIndex, 1);
+                    }
+                    w.cooldown = 200;
+                }
+            });
+        } else {
+            caravans.forEach(c => {
+                if (Math.hypot(w.x - c.x, w.y - c.y) < COLLISION_RADIUS && Math.random() < 0.05) {
+                    c.delay += 20;
+                    w.cooldown = 150;
+                }
+            });
+        }
+    });
+
+    wildlife.forEach(w => {
+        if (w.cooldown > 0) return;
+        clans.forEach(clan => {
+           if (clan.population <= 0) return;
+           const inRange = Math.hypot(w.x - clan.x, w.y - clan.y) < COLLISION_RADIUS + 10;
+           if (!inRange) return;
+           const mitigation = 1 - Math.min(0.7, clan.defense / 180);
+           if (w.behavior === 'aggressive') {
+               log(`${clan.name} attacked by a ${w.type}!`, 'attack');
+               clan.stock.food = Math.max(0, clan.stock.food - 5 * mitigation);
+               if (Math.random() < 0.18 * mitigation) clan.population--;
+               w.cooldown = 300;
+           } else if (Math.random() < 0.06) {
+               clan.stock.food = Math.max(0, clan.stock.food - 1);
+               w.cooldown = 150;
+           }
+        });
+    });
+
+    // Invasive species harming nearby fauna (habitat destruction)
+    invasives.forEach(iv => {
+        for (let i = wildlife.length - 1; i >= 0; i--) {
+            const w = wildlife[i];
+            if (Math.hypot(w.x - iv.x, w.y - iv.y) < iv.radius + 8 && Math.random() < 0.01) {
+                wildlife.splice(i, 1);
+            }
+        }
+    });
+}
+
+function resolveSettlementRaid(clan, raiderSize) {
+    if (clan.population <= 0) return;
+    log(`RAIDERS attacking ${clan.name}!`, 'attack');
+
+    const win = Math.random() < (0.5 + ((clan.population - raiderSize) * 0.02) + (clan.defense * 0.005) + getRaidResistBonus());
+    if (win) {
+        log(`VICTORY! ${clan.name} repelled raiders.`);
+        clan.population = Math.max(1, clan.population - Math.floor(raiderSize/4));
+    } else {
+        const lostPop = Math.floor(clan.population / 3) + 1;
+        clan.population = Math.max(0, clan.population - lostPop);
+        for(let res in clan.stock) clan.stock[res] = Math.floor(clan.stock[res] * 0.25);
+        log(`DEFEAT! ${clan.name} was plundered (-${lostPop} pop).`, 'attack');
+        if (clan.population <= 0) updateUIDropdowns();
+    }
+}
+
+function generateOrganicIslandShape() {
+  const centerX = canvas.width / 2, centerY = canvas.height / 2;
+  islandPath = [];
+  for (let i = 0; i < 40; i++) {
+    const angle = (i / 40) * Math.PI * 2;
+    const noise = Math.sin(angle * 3) * 40 + Math.cos(angle * 7) * 20 + (Math.random() * 20 - 10);
+    islandPath.push({ x: centerX + Math.cos(angle) * (320 + noise), y: centerY + Math.sin(angle) * (240 + noise) });
+  }
+}
+
+function generateTerrain() {
+  terrainFeatures = [];
+  for(let i=0; i<15; i++) terrainFeatures.push({ type: 'mountain', x: 480 + Math.random()*200, y: 350 + Math.random()*150, r: 18 + Math.random()*15 });
+  for(let i=0; i<25; i++) terrainFeatures.push({ type: 'tree', x: 120 + Math.random()*200, y: 80 + Math.random()*160, r: 10 + Math.random()*12 });
+  for(let i=0; i<18; i++) terrainFeatures.push({ type: 'grass', x: 390 + Math.random()*220, y: 110 + Math.random()*180, r: 6 + Math.random()*6 });
+  for(let i=0; i<16; i++) terrainFeatures.push({ type: 'reed', x: 160 + Math.random()*220, y: 330 + Math.random()*180, r: 6 + Math.random()*8 });
+}
+
+function isPointInIsland(x, y) {
+  let inside = false;
+  for (let i = 0, j = islandPath.length - 1; i < islandPath.length; j = i++) {
+    const xi = islandPath[i].x, yi = islandPath[i].y, xj = islandPath[j].x, yj = islandPath[j].y;
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function drawBiomeZones() {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(islandPath[0].x, islandPath[0].y);
+  islandPath.forEach(pt => ctx.lineTo(pt.x, pt.y));
+  ctx.closePath();
+  ctx.clip();
+  ZONES.forEach(z => {
+    const grad = ctx.createRadialGradient(z.cx, z.cy, 10, z.cx, z.cy, z.r);
+    grad.addColorStop(0, z.color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  });
+  ctx.restore();
+}
+
+function drawGraphics() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Environment rendering
+  ctx.fillStyle = "#1d4361"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath(); ctx.moveTo(islandPath[0].x, islandPath[0].y);
+  islandPath.forEach(pt => ctx.lineTo(pt.x, pt.y)); ctx.closePath();
+  ctx.lineWidth = 14; ctx.strokeStyle = "#5ca3a8"; ctx.stroke();
+  ctx.lineWidth = 6; ctx.strokeStyle = "#d1b475"; ctx.stroke();
+  ctx.fillStyle = "#3d7a37"; ctx.fill();
+
+  drawBiomeZones();
+
+  ctx.fillStyle = "#347ca5"; ctx.strokeStyle = "#347ca5"; ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.moveTo(380, 80); ctx.bezierCurveTo(340, 200, 450, 320, 220, 480); ctx.stroke();
+
+  terrainFeatures.forEach(f => {
+    if (f.type === 'mountain') {
+      ctx.fillStyle = "#544c4a";
+      ctx.beginPath(); ctx.moveTo(f.x, f.y - f.r); ctx.lineTo(f.x + f.r, f.y + f.r); ctx.lineTo(f.x - f.r, f.y + f.r); ctx.fill();
+    } else if (f.type === 'tree') {
+      ctx.fillStyle = "#1b4d1b";
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+    } else if (f.type === 'grass') {
+      ctx.strokeStyle = "#a9c95c"; ctx.lineWidth = 2;
+      for (let b = 0; b < 4; b++) {
+        const bx = f.x + b * 3 - 4;
+        ctx.beginPath(); ctx.moveTo(bx, f.y + f.r); ctx.lineTo(bx + 2, f.y - f.r); ctx.stroke();
+      }
+    } else if (f.type === 'reed') {
+      ctx.strokeStyle = "#4fae9a"; ctx.lineWidth = 2;
+      for (let b = 0; b < 3; b++) {
+        const bx = f.x + b * 4 - 4;
+        ctx.beginPath(); ctx.moveTo(bx, f.y + f.r); ctx.lineTo(bx, f.y - f.r * 1.5); ctx.stroke();
+      }
+    }
+  });
+
+  // Render Trade Routes (Unique Color Per Origin Clan)
+  tradeRoutes.forEach(route => {
+    ctx.strokeStyle = route.from.color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    route.path.forEach((pt, idx) => {
+        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  // Render Path Currently Being Drawn
+  if (drawingRoute && currentPathWaypoints.length > 0) {
+    ctx.strokeStyle = "#ffd983";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    currentPathWaypoints.forEach((pt, idx) => {
+        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+
+    currentPathWaypoints.forEach(pt => {
+        ctx.fillStyle = "#ffd983";
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI*2); ctx.fill();
+    });
+  }
+
+  // Draw Traders
+  caravans.forEach(c => {
+    if (c.delay > 0) return;
+    ctx.fillStyle = "#00d2ff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  });
+
+  // Draw Fauna: aggressive = triangle w/ red outline, passive = plain circle
+  wildlife.forEach(w => {
+    const style = FAUNA_STYLE[w.type] || { color: '#999' };
+    ctx.fillStyle = style.color;
+    if (w.behavior === 'aggressive') {
+      ctx.beginPath();
+      ctx.moveTo(w.x, w.y - 6); ctx.lineTo(w.x + 5, w.y + 5); ctx.lineTo(w.x - 5, w.y + 5); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#ff5555"; ctx.lineWidth = 1; ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(w.x, w.y, 4.5, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  // Draw Invasive Species (spreading purple blobs)
+  invasives.forEach(iv => {
+    ctx.fillStyle = "rgba(150,40,180,0.32)";
+    ctx.beginPath(); ctx.arc(iv.x, iv.y, iv.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#a020c0"; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.arc(iv.x, iv.y, iv.radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  raiders.forEach(r => {
+    ctx.fillStyle = "#ff5555"; ctx.strokeStyle = "black"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(r.x, r.y, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  });
+
+  // Draw Unique Color-Coded Clans
+  const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+  clans.forEach(clan => {
+    const isDestroyed = clan.population <= 0;
+    const inShortage = !isDestroyed && Object.values(clan.stock).some(v => v < SHORTAGE_THRESHOLD);
+
+    if (inShortage) {
+      ctx.strokeStyle = `rgba(255, 90, 90, ${0.4 + pulse * 0.5})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(clan.x, clan.y, 24 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    ctx.fillStyle = isDestroyed ? "#333" : clan.color;
+    ctx.beginPath(); ctx.arc(clan.x, clan.y, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = isDestroyed ? "red" : "#ffffff"; ctx.lineWidth = 3; ctx.stroke();
+
+    if (!isDestroyed && clan.defense > 0) {
+      ctx.strokeStyle = "#e67e22"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(clan.x, clan.y, 20, -Math.PI/2, -Math.PI/2 + (clan.defense/100)*Math.PI*2); ctx.stroke();
+    }
+
+    if (!isDestroyed) {
+      ctx.fillStyle = "#1a1a1a"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(clan.name.charAt(0), clan.x, clan.y + 1);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(clan.name, clan.x, clan.y + 34);
+
+    if (!isDestroyed) {
+        const cardW = 72, cardH = 54, cardX = clan.x - cardW / 2, cardY = clan.y - 90;
+        ctx.fillStyle = "rgba(26, 22, 20, 0.9)"; ctx.fillRect(cardX, cardY, cardW, cardH);
+        ctx.strokeStyle = clan.color; ctx.lineWidth = 2; ctx.strokeRect(cardX, cardY, cardW, cardH);
+        ctx.font = "10px sans-serif"; ctx.textAlign = "left";
+        ctx.fillStyle = clan.stock.wood < 5 ? "#ff5555" : "#fff"; ctx.fillText(`🪵 ${Math.floor(clan.stock.wood)}`, cardX + 4, cardY + 16);
+        ctx.fillStyle = clan.stock.food < 5 ? "#ff5555" : "#fff"; ctx.fillText(`🌾 ${Math.floor(clan.stock.food)}`, cardX + 38, cardY + 16);
+        ctx.fillStyle = clan.stock.water < 5 ? "#ff5555" : "#fff"; ctx.fillText(`💧 ${Math.floor(clan.stock.water)}`, cardX + 4, cardY + 34);
+        ctx.fillStyle = clan.stock.minerals < 5 ? "#ff5555" : "#fff"; ctx.fillText(`🪨 ${Math.floor(clan.stock.minerals)}`, cardX + 38, cardY + 34);
+        ctx.fillStyle = "#e6c875"; ctx.fillText(`👥 Pop: ${clan.population}`, cardX + 4, cardY + 48);
+    }
+  });
+
+  if (placingClan) {
+    ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#fff"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("Click on land to establish a settlement.", canvas.width/2, 30);
+  }
+}
+
+function updateUIStats() {
+    document.getElementById('day-display').innerText = Math.floor(gameTimeH / 24) + 1;
+    document.getElementById('hour-display').innerText = gameTimeH % 24;
+    document.getElementById('clan-count').innerText = clans.filter(c => c.population > 0).length;
+    document.getElementById('wildlife-count').innerText = wildlife.length;
+
+    const envHealth = computeEnvironmentalHealth();
+    const equity = computeEquityIndex();
+    const shortages = countShortages();
+
+    const envDisplay = document.getElementById('eco-health-display');
+    envDisplay.innerText = `${Math.round(envHealth)}%`;
+    envDisplay.className = 'param-val ' + (envHealth < 40 ? 'warn' : envHealth > 75 ? 'good' : '');
+    const envBar = document.getElementById('eco-health-bar');
+    envBar.style.width = `${envHealth}%`;
+    envBar.style.background = envHealth < 40 ? '#ff8080' : envHealth < 70 ? '#ffd983' : '#8ef29a';
+
+    const equityDisplay = document.getElementById('equity-display');
+    equityDisplay.innerText = `${Math.round(equity)}%`;
+    equityDisplay.className = 'param-val ' + (equity < 40 ? 'warn' : equity > 75 ? 'good' : '');
+    const equityBar = document.getElementById('equity-bar');
+    equityBar.style.width = `${equity}%`;
+    equityBar.style.background = equity < 40 ? '#ff8080' : equity < 70 ? '#ffd983' : '#75c8ff';
+
+    document.getElementById('aid-display').innerText = totalAidDelivered;
+    const shortageDisplay = document.getElementById('shortage-display');
+    shortageDisplay.innerText = shortages;
+    shortageDisplay.className = 'param-val ' + (shortages > 0 ? 'warn' : 'good');
+
+    const invasiveDisplay = document.getElementById('invasive-display');
+    invasiveDisplay.innerText = invasives.length;
+    invasiveDisplay.className = 'param-val ' + (invasives.length > 0 ? 'warn' : 'good');
+
+    updateDefenseUI();
+    updateAccessibleSummary();
+}
+
+function updateDefenseUI() {
+  const defenseSelect = document.getElementById('defense-clan-select');
+  const clan = clans.find(c => c.id === defenseSelect.value);
+  const bar = document.getElementById('defense-bar');
+  const label = document.getElementById('defense-level-display');
+  if (!clan) { bar.style.width = '0%'; label.innerText = '—'; return; }
+  bar.style.width = clan.defense + '%';
+  label.innerText = `${Math.round(clan.defense)}/100`;
+}
+
+function updateAccessibleSummary() {
+  const tbody = document.getElementById('sr-clan-tbody');
+  tbody.innerHTML = '';
+  clans.forEach(clan => {
+    const row = document.createElement('tr');
+    const status = clan.population <= 0
+      ? 'Destroyed'
+      : Object.values(clan.stock).some(v => v < SHORTAGE_THRESHOLD)
+        ? 'In shortage, needs aid'
+        : clan.localEnvironment < OVERHARVEST_WARN
+          ? 'Land overharvested, yields reduced'
+          : 'Stable';
+    row.innerHTML = `<td>${clan.name}</td><td>${clan.biome.name}</td><td>${clan.population}</td>` +
+      `<td>${Math.floor(clan.stock.wood)}</td><td>${Math.floor(clan.stock.food)}</td>` +
+      `<td>${Math.floor(clan.stock.water)}</td><td>${Math.floor(clan.stock.minerals)}</td>` +
+      `<td>${Math.round(clan.defense)}</td><td>${status}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+function updateUIDropdowns() {
+  const fromSelect = document.getElementById('trade-from');
+  const toSelect = document.getElementById('trade-to');
+  const defenseSelect = document.getElementById('defense-clan-select');
+  const prevDefenseVal = defenseSelect.value;
+
+  fromSelect.innerHTML = ''; toSelect.innerHTML = ''; defenseSelect.innerHTML = '';
+  clans.filter(c => c.population > 0).forEach(clan => {
+    fromSelect.add(new Option(clan.name, clan.id));
+    toSelect.add(new Option(clan.name, clan.id));
+    defenseSelect.add(new Option(clan.name, clan.id));
+  });
+
+  if ([...defenseSelect.options].some(o => o.value === prevDefenseVal)) {
+    defenseSelect.value = prevDefenseVal;
+  }
+  updateDefenseUI();
+}
+
+function log(msg, type='') {
+  const logEl = document.getElementById('log');
+  const time = `[D${Math.floor(gameTimeH / 24) + 1}:H${gameTimeH % 24}] `;
+  logEl.innerHTML = `<div class="log-item ${type ? 'log-'+type : ''}">${time}${msg}</div>` + logEl.innerHTML;
+  if (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
+}
+
+// Role selection
+document.querySelectorAll('.role-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentRole = btn.dataset.role;
+    document.querySelectorAll('.role-btn').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+    document.getElementById('role-desc').innerText = ROLES[currentRole].desc;
+    abilityCooldown = 0;
+    updateAbilityButton();
+    log(`You are now playing as the ${ROLES[currentRole].name}.`, 'eco');
+  });
+});
+document.getElementById('ability-btn').addEventListener('click', useAbility);
+
+// Defense actions
+document.getElementById('reinforce-btn').addEventListener('click', reinforceDefenses);
+document.getElementById('clear-invasive-btn').addEventListener('click', clearInvasives);
+document.getElementById('defense-clan-select').addEventListener('change', updateDefenseUI);
+
+// Custom Path Creation Handling
+document.getElementById('draw-route-btn').addEventListener('click', () => {
+  const fromId = document.getElementById('trade-from').value;
+  const toId = document.getElementById('trade-to').value;
+  const res = document.getElementById('trade-give-res').value;
+  const qty = parseInt(document.getElementById('trade-give-qty').value);
+
+  if (fromId === toId) { alert("Select two different clans!"); return; }
+
+  const fromClan = clans.find(c => c.id === fromId);
+  const toClan = clans.find(c => c.id === toId);
+
+  activeRouteSetup = { from: fromClan, to: toClan, res: res, qty: qty };
+  drawingRoute = true;
+  currentPathWaypoints = [{ x: fromClan.x, y: fromClan.y }];
+
+  document.getElementById('draw-route-btn').style.display = 'none';
+  document.getElementById('finish-path-btn').style.display = 'block';
+  log(`Drawing path: Click on map to add waypoints from ${fromClan.name} to ${toClan.name}.`);
+});
+
+document.getElementById('suggest-aid-btn').addEventListener('click', () => {
+  const active = clans.filter(c => c.population > 0);
+  const needy = active.filter(c => Object.values(c.stock).some(v => v < SHORTAGE_THRESHOLD));
+
+  if (needy.length === 0) {
+    log('No settlements currently in shortage — resource sharing is balanced!', 'eco');
+    return;
+  }
+
+  let target = needy[0], targetRes = 'wood', lowestVal = Infinity;
+  needy.forEach(c => {
+    Object.entries(c.stock).forEach(([res, val]) => {
+      if (val < lowestVal) { lowestVal = val; target = c; targetRes = res; }
+    });
+  });
+
+  const donors = active.filter(c => c.id !== target.id).sort((a, b) => b.stock[targetRes] - a.stock[targetRes]);
+  const donor = donors[0];
+
+  if (!donor || donor.stock[targetRes] < 15) {
+    log(`${target.name} needs ${targetRes}, but no settlement currently has a surplus to share.`, 'eco');
+    return;
+  }
+
+  document.getElementById('trade-from').value = donor.id;
+  document.getElementById('trade-to').value = target.id;
+  document.getElementById('trade-give-res').value = targetRes;
+  document.getElementById('trade-give-qty').value = Math.min(20, Math.floor(donor.stock[targetRes] * 0.4));
+
+  log(`Suggested aid: send ${targetRes} from ${donor.name} to ${target.name}. Click "Draw Route Path" to confirm.`, 'eco');
+});
+
+function finalizeRoute() {
+  if (!drawingRoute || !activeRouteSetup) return;
+
+  currentPathWaypoints.push({ x: activeRouteSetup.to.x, y: activeRouteSetup.to.y });
+
+  tradeRoutes.push({
+    id: Math.random().toString(36).substr(2, 5),
+    from: activeRouteSetup.from,
+    to: activeRouteSetup.to,
+    giveRes: activeRouteSetup.res,
+    giveQty: activeRouteSetup.qty,
+    path: [...currentPathWaypoints]
+  });
+
+  log(`Custom route established between ${activeRouteSetup.from.name} and ${activeRouteSetup.to.name}!`, 'trade');
+
+  drawingRoute = false;
+  currentPathWaypoints = [];
+  activeRouteSetup = null;
+
+  document.getElementById('draw-route-btn').style.display = 'block';
+  document.getElementById('finish-path-btn').style.display = 'none';
+}
+
+document.getElementById('finish-path-btn').addEventListener('click', finalizeRoute);
+
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (drawingRoute) finalizeRoute();
+});
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (drawingRoute) {
+    currentPathWaypoints.push({ x: x, y: y });
+    return;
+  }
+
+  if (placingClan) {
+    if (!isPointInIsland(x, y)) { log("Cannot settle in water!"); return; }
+    if (clans.some(c => Math.hypot(c.x - x, c.y - y) < 70)) { log("Too close to another clan!"); return; }
+
+    const biomeTypes = [BIOMES.WOODS, BIOMES.PLAINS, BIOMES.RIVER, BIOMES.MOUNTAINS];
+    const chosenBiome = biomeTypes[Math.floor(Math.random() * biomeTypes.length)];
+    const chosenColor = CLAN_COLORS[clans.length % CLAN_COLORS.length];
+    const newName = generateRandomName();
+
+    clans.push(createClan(newName, x, y, chosenBiome, chosenColor));
+    placingClan = false;
+    log(`New settlement founded: ${newName}`, 'trade');
+    updateUIDropdowns();
+  }
+});
+
+document.getElementById('add-clan-btn').addEventListener('click', () => { placingClan = true; });
+
+function setPaused(paused) {
+  isPaused = paused;
+  document.getElementById('pause-btn').style.display = paused ? 'none' : 'block';
+  document.getElementById('resume-btn').style.display = paused ? 'block' : 'none';
+  document.getElementById('pause-btn').setAttribute('aria-pressed', String(paused));
+  document.getElementById('resume-btn').setAttribute('aria-pressed', String(!paused));
+}
+document.getElementById('pause-btn').addEventListener('click', () => setPaused(true));
+document.getElementById('resume-btn').addEventListener('click', () => setPaused(false));
+
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  e.preventDefault();
+  setPaused(!isPaused);
+});
+
+// --- Accessibility controls ---
+document.getElementById('contrast-toggle').addEventListener('click', (e) => {
+  const enabled = document.body.classList.toggle('high-contrast');
+  e.target.setAttribute('aria-pressed', String(enabled));
+});
+
+document.getElementById('motion-toggle').addEventListener('click', (e) => {
+  reducedMotion = !reducedMotion;
+  e.target.setAttribute('aria-pressed', String(reducedMotion));
+  TRADE_CARAVAN_SPEED = reducedMotion ? BASE_CARAVAN_SPEED * 0.5 : BASE_CARAVAN_SPEED;
+  WILDLIFE_SPEED = reducedMotion ? BASE_WILDLIFE_SPEED * 0.5 : BASE_WILDLIFE_SPEED;
+  RAIDER_SPEED = reducedMotion ? BASE_RAIDER_SPEED * 0.5 : BASE_RAIDER_SPEED;
+  log(reducedMotion ? 'Reduced motion enabled — animations slowed.' : 'Reduced motion disabled.');
+});
+
+document.getElementById('about-toggle').addEventListener('click', (e) => {
+  const panel = document.getElementById('about-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  e.target.setAttribute('aria-expanded', String(!isOpen));
+});
+
+init();
+</script>
+</body>
+</html>
