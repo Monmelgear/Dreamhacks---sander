@@ -1,4 +1,5 @@
 # Dreamhacks---sander
 
-+ This is a Project for The dreamhacks competion
++ This is a project for the Dreamhacks competition-
++ We are choosing option #2
   
